@@ -7,32 +7,14 @@ var MIME = {
   '.js': 'application/javascript'
 };
 
-function combineFiles(pathnames, callback) {
-  var output = [];
-
-  (function next(i, len) {
-    if(i < len) {
-      fs.readFile(pathnames[i], function (err, data) {
-        if (err) {
-          callback(err);
-        } else {
-          output.push(data);
-          next(i + 1, len);
-        }
-      });
-    } else {
-      callback(null, Buffer.concat(output));
-    }
-  }(0, pathnames.length))
-}
-
 function main(argv) {
   var config = JSON.parse(fs.readFileSync(argv[0], 'utf-8')),
       root = config.root || '.',
-      port = config.port || 8080;
+      port = config.port || 8080,
+      server;
   
   console.log("Server is running on:", root,port);
-  http.createServer(function (request, response) {
+  server = http.createServer(function (request, response) {
     var urlInfo = parseURL(root, request.url);
     validateFiles(urlInfo.pathnames, function (err, pathnames) {
       if (err) {
@@ -47,6 +29,12 @@ function main(argv) {
     });
   }).listen(port);
 }
+
+process.on('SIGTERM', function() {
+  server.close(function () {
+    process.exit(0);
+  });
+});
 
 function outputFiles(pathnames, writer) {
   (function next(i, len) {
